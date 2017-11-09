@@ -11,7 +11,7 @@
 #							instance name - london-svr-lin-node-nCache-01
 #							static ip.	  - london.sip-nCache-01
 #
-#
+# 2017 Nov 9 - CGB - Added the -f flag to force the deletion and rebuild of existing server.
 # 
 # =============================================================================================================================================
 
@@ -32,6 +32,7 @@ AWS_CMD_GETINST="lightsail get-instances"
 AWS_CMD_STATIC_IP="lightsail get-static-ips"
 AWS_CMD_ATTACH_IP="lightsail attach-static-ip"
 AWS_CMD_CREATE_STATIC_IP="lightsail allocate-static-ip"
+AWS_CMD_DELETE_SVR="lightsail delete-instance"
 
 AWS_SVR_STATE_RUNNING="16"
 AWS_SVR_STATE_UNKNOWN="-1"
@@ -83,10 +84,20 @@ INSTANCE_NAME=`makeSvrName "${1}" "${2}"`
 
 server_exists=`aws ${AWS_CMD_GETINST} ${PRO_FILE} | node aws-response-parser "${INSTANCE_NAME}" | awk -F',' '{print $2}' | awk -F':' '{print $2}' | sed -e "s/ //g"`
 
-
 if [ "${server_exists}" -ne -1 ] ; then
 	echo "Server Instance ${INSTANCE_NAME} already exists!"
-	exit 1
+	if [ "${3}" = "-f" ] ; then
+		echo "++[Step:0/5] Destroying current instance of ${INSTANCE_NAME} on aws lightsail... static IP persisted"
+		aws ${AWS_CMD_DELETE_SVR} --instance-name ${INSTANCE_NAME} ${PRO_FILE}
+		if [ ${?} -ne 0 ] ; then
+			echo "++[Step:0/5] Destroying of ${INSTANCE_NAME} failed!!! doh!"
+			exit 2
+		else
+			echo "++[Step:0/5] Destroying of ${INSTANCE_NAME} competed!!! yippee!"
+		fi
+	else
+		exit 3
+	fi
 fi
 
 echo "++[Step:1/5] Creating new instance of ${INSTANCE_NAME} on aws lightsail..."
